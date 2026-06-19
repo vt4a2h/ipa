@@ -1,0 +1,8 @@
+{
+  "name": "ipa",
+  "version": "0.0.0",
+  "description": "Partial application proposal",
+  "dependencies": [
+    "catch2"
+  ]
+}

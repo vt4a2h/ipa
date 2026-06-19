@@ -1,0 +1,16 @@
+BasedOnStyle: LLVM
+
+Standard: Latest
+
+ColumnLimit: 120
+FixNamespaceComments: true
+AlwaysBreakTemplateDeclarations: Yes
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+  AfterClass: true
+  AfterStruct: true
+  AfterEnum: true
+  AfterUnion: true
+  AfterNamespace: true
+InsertNewlineAtEOF: true

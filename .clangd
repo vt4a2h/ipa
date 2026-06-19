@@ -1,0 +1,12 @@
+If:
+  PathMatch: [
+    # For test files only
+    .*tst_.*\.cpp,
+  ]
+CompileFlags:
+  Add: [
+    # When you use modern compilers with modern clangd (inside IDEs that use it), all Catch2 sections are highlighted
+    # as errors. It's true for other frameworks like Google Test, since many of them use __COUNTER__ under the hood.
+    # See also: https://github.com/llvm/llvm-project/issues/184250
+    "-Wno-c2y-extensions",
+  ]
