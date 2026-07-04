@@ -84,7 +84,7 @@ Discussion of the major implementation concerns:
     1. Zero
     2. No intermediate objects, tuples, etc.
 
-The reference implementation for `expected::and_then` lives [here](include/ipa/ipa.hpp). The tests are [here](test/ipa/tst_ipa_and_then.cpp). The code contains the implementation for `expected<T>` and `expected<void>`. All other monadic operations of `expected`/`optional` can be implemented the same manner.
+The reference implementation for `expected::and_then` lives [here](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L144). The tests are [here](https://github.com/vt4a2h/ipa/blob/main/test/ipa/tst_ipa_and_then.cpp#L34). The code contains the implementation for `expected<T>` and `expected<void>`. All other monadic operations of `expected`/`optional` can be implemented the same manner.
 
 ## Examples
 
