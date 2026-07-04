@@ -71,9 +71,8 @@ Discussion of the major implementation concerns:
     3. Many named lambda functions can clutter a function and reduce readability as well.
     4. A user has to write more (repeated) code.
 2. Why not use `bind_back`/`bind_front`?
-    1. Overhead.
-    2. Restrictions on arguments.
-    3. Can create intermediate objects.
+    1. Looks more noisy.
+    2. Can be non-zero cost: overhead[^1], restrictions[^2] on arguments, and create intermediate objects[^3].
 3. What to do about the position of a value contained inside `expected`/`optional` that is passed to a function?
     1. Pass as the first argument by default.
     2. Use `placeholders::value` if a different position is desired.
@@ -168,3 +167,9 @@ std::invoke(&Database::store, db, component.value());
 ```
 
 Another good application of this case is to chain something inside a class method using other methods of this class. In this case, we use `this` as a second object.
+
+[^1]: We are talking about a **potential** overhead here, for example, when passing large objects as arguments. A user can always use `std::ref` or similar, but it requires writing this code and being aware of it.
+
+[^2]: Both `f` and `args` must be `MoveConstructible`.
+
+[^3]: Also **potentially**. The code certainly returns another function object, but the influence should be negligible.
