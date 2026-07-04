@@ -65,3 +65,69 @@ The major concerns:
     2. No intermediate objects, tuples, etc.
 
 The reference implementation for `std::expected::and_then` lives [here](https://github.com/vt4a2h/ipa). The tests are [here](https://github.com/vt4a2h/ipa/blob/main/test/ipa/tst_ipa_and_then.cpp). The code contains the implementation for `std::expected<T>` and `std::expected<void>`. All other monadic operations of `std::expected`/`std::optional` can be implemented the same manner.
+
+# Examples
+
+## Invoke a function with extra arguments
+As it was in the motivation example, the `createComponent` function needs two extra arguments to create a `Component` within some `Context`.
+```c++
+std::expected<Context, Error> extractContext();
+std::expected<Component, Error> createComponent(Context, Path, MetaData);
+
+// ... 
+
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+auto componentResult = extractContext()
+    .and_then(&createComponent, path, metaData);
+```
+Since `Context` is the first argument, we don't need to change its position. Hence, we can simply forward `path` and `metaData` to the function in requred order. The code above will invoke `createComponent` as follows:
+```c++
+std::invoke(&createComponent, ctx.value(), path, metaData);
+```
+
+## Invoke a function with extra arguments and a value placeholder
+Assume that `createComponent` function has a different signature and is used in many different places.
+```c++
+std::expected<Component, Error> createComponent(Path, MetaData, Context);
+```
+In this case, `Context` is the very last parameter, but we still want to use this function with `and_then`.
+```c++
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+auto componentResult = extractContext()
+    .and_then(&createComponent, path, metaData, std::placeholders::value);
+```
+In this case, the value of `Context` will be passed to the function as the last argument.
+```c++
+std::invoke(&createComponent, path, metaData, ctx.value());
+```
+
+## Invoke a class method with extra arguments
+Assume there is a `Database` class that holds `Component`s. This class alrady contains compatible API that we can use with `and_then`.
+```c++
+struct Database
+{
+    constexpr std::expected<void, Error> store(Component /*component*/) const
+    {
+        // Store component
+    }
+};
+```
+Normally, an object of this type already exists. We can simply re-use it in a monadic interface.
+```c++
+Database db{/* ... */};
+Context ctx{/* ... */};
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+const auto result = createComponent(ctx, path, metaData)
+    .and_then(&Database::store, db, std::placeholders::value);
+```
+The code above will invoke `Database::store` as follows:
+```c++
+std::invoke(&Database::store, db, component.value());
+```
+Another good application of this case is to chain something inside a class method using other methods of this class. In this case, we use `this` as a second object.
