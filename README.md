@@ -38,7 +38,9 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 auto componentResult = extractContext()
-    .and_then([&path, &metaData](Context context) { return createComponent(context, path, metaData); });
+    .and_then([&path, &metaData](Context context) {
+        return createComponent(context, path, metaData);
+    });
 ```
 
 </td>
