@@ -112,6 +112,45 @@ Since `Context` is the first argument, we don't need to change its position. Hen
 std::invoke(&createComponent, ctx.value(), path, metaData);
 ```
 
+Compare the final solutions:
+
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```c++
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+auto componentResult = extractContext()
+    .and_then([&path, &metaData](Context context) {
+        return createComponent(context, path, metaData);
+    });
+```
+
+</td>
+<td>
+
+```c++
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+auto componentResult = extractContext()
+    .and_then(&createComponent, path, metaData);
+```
+
+</td>
+</tr>
+</tbody>
+</table>
+
 ### Invoke a function with extra arguments and a value placeholder
 
 Assume that `createComponent` function has a different signature:
@@ -135,6 +174,45 @@ In this case, the value of `Context` will be passed to the function as the last 
 ```c++
 std::invoke(&createComponent, path, metaData, ctx.value());
 ```
+
+Compare the final solutions:
+
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```c++
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+auto componentResult = extractContext()
+    .and_then([&path, &metaData](Context context) {
+        return createComponent(path, metaData, context);
+    });
+```
+
+</td>
+<td>
+
+```c++
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+auto componentResult = extractContext()
+    .and_then(&createComponent, path, metaData, std::placeholders::value);
+```
+
+</td>
+</tr>
+</tbody>
+</table>
 
 ### Invoke a class method with extra arguments
 
@@ -169,6 +247,90 @@ std::invoke(&Database::store, db, component.value());
 ```
 
 Another good application of this case is to chain something inside a class method using other methods of this class. In this case, we use `this` as a second object.
+
+Compare the final solutions (lambda):
+
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```c++
+Database db{/* ... */};
+Context ctx{/* ... */};
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+const auto result = createComponent(ctx, path, metaData)
+    .and_then([&db](Component component) {
+        return db.store(component);
+    });
+```
+
+</td>
+<td>
+
+```c++
+Database db{/* ... */};
+Context ctx{/* ... */};
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+const auto result = createComponent(ctx, path, metaData)
+    .and_then(&Database::store, db, std::placeholders::value);
+```
+
+</td>
+</tr>
+</tbody>
+</table>
+
+Compare the final solutions (`std::bind_front`):
+
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+
+```c++
+Database db{/* ... */};
+Context ctx{/* ... */};
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+const auto result = createComponent(ctx, path, metaData)
+    .and_then(std::bind_front(&Database::store, std::ref(db)));
+```
+
+</td>
+<td>
+
+```c++
+Database db{/* ... */};
+Context ctx{/* ... */};
+Path path{/* ... */};
+MetaData metaData{/* ... */};
+
+const auto result = createComponent(ctx, path, metaData)
+    .and_then(&Database::store, db, std::placeholders::value);
+```
+
+</td>
+</tr>
+</tbody>
+</table>
 
 ## Proposed changes
 
