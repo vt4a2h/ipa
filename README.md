@@ -367,12 +367,13 @@ constexpr auto and_then(F&& f, Args&& ...args);
 ### Add new constraints
 Let `T` the type of the contained value. Let `P` be a type of the value placeholder. Let `F` be a type the function to invoke. Let `Args` be a type of the trailing argument pack.
 1. `!same_as<T, void>`:
-    1. `Args` must contain zero or one `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L148)).
-    2. `F` must be invocable with `Args` where `P` is replaced by `T` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L150)).
-    3. The second constraint must be taken into account in all other related code. I.e., we always replace `P` with `T` whenever `P` is encountered ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L72)). The same for objects, not just for the types ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L116)).
+    1. If `sizeof(Args) == 1`, then the pack must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L149)).
+    2. If `sizeof(Args) > 1`, then the pack must contain zero or one `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L151)).
+    3. `F` must be invocable with `Args` where `P` is replaced by `T` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L153)).
+    4. The second constraint must be taken into account in all other related code. I.e., we always replace `P` with `T` whenever `P` is encountered ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L72)). The same for objects, not just for the types ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L116)).
 2. `same_as<T, void>`:
-    1. `Args` must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L201)).
-    2. `F` must be invocable with `Args` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L203)).
+    1. `Args` must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L204)).
+    2. `F` must be invocable with `Args` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L206)).
 
 All other constraints remain the same. But we should take 1.2 and 1.3 into account.
 

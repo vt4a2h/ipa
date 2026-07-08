@@ -52,13 +52,14 @@ namespace ipa
         inline constexpr bool is_placeholder = std::same_as<std::remove_cvref_t<T>, placeholders::detail::value_t>;
 
         template <class... Args>
-        constexpr inline bool contains_zero_or_one_value_placeholders = []
-        {
-            std::size_t counter{};
-            ([&counter] { counter += static_cast<std::size_t>(is_placeholder<Args>); }(), ...);
+        constexpr inline std::size_t placeholders_count =
+            (std::size_t{} + ... + static_cast<std::size_t>(is_placeholder<Args>));
 
-            return counter <= 1;
-        }();
+        template <class... Args>
+        constexpr inline bool single_arg_is_placeholder = sizeof...(Args) == 1 && placeholders_count<Args...> == 1;
+
+        template <class... Args>
+        constexpr inline bool contains_zero_or_one_value_placeholders = placeholders_count<Args...> <= 1;
 
         template <class... Args>
         inline constexpr bool contains_placeholder = (... || is_placeholder<Args>);
@@ -145,8 +146,10 @@ namespace ipa
             this Self&& self, F&& f,
             Args&&... args) noexcept(detail::is_nothrow_invocable_with_extra_args<F, T, Args...>)
         {
+            static_assert(!detail::single_arg_is_placeholder<Args...>,
+                          "The trailing argument pack of a single argument must not contain a placeholder.");
             static_assert(detail::contains_zero_or_one_value_placeholders<Args...>,
-                          "The trailing argument pack must contain zero or one value placeholder");
+                          "The trailing argument pack must contain zero or one value placeholder.");
             static_assert(detail::is_invocable_with_extra_args<F, T, Args...>,
                           "The function must be invocable with a value type and all extra arguments. "
                           "Consider using placeholders::value if an argument of a value type shouldn't go first.");

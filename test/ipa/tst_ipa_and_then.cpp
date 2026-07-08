@@ -54,7 +54,7 @@ TEST_CASE("Forward args (Error)")
 }
 
 
-TEST_CASE("Value placeholders count")
+TEST_CASE("Check placeholders count")
 {
     STATIC_REQUIRE(ipa::detail::contains_zero_or_one_value_placeholders<int, double>);
     STATIC_REQUIRE(ipa::detail::contains_zero_or_one_value_placeholders<int, double,
@@ -67,6 +67,21 @@ TEST_CASE("Value placeholders count")
 
     STATIC_REQUIRE_FALSE(ipa::detail::contains_zero_or_one_value_placeholders<
                          ipa::placeholders::detail::value_t, ipa::placeholders::detail::value_t>);
+}
+
+TEST_CASE("Check placeholders count (single arg pack")
+{
+    STATIC_REQUIRE(ipa::detail::single_arg_is_placeholder<ipa::placeholders::detail::value_t>);
+    STATIC_REQUIRE_FALSE(ipa::detail::single_arg_is_placeholder<int>);
+}
+
+TEST_CASE("Placeholders count")
+{
+    STATIC_REQUIRE(ipa::detail::placeholders_count<int, double> == 0);
+    STATIC_REQUIRE(ipa::detail::placeholders_count<int, double, ipa::placeholders::detail::value_t> == 1);
+    STATIC_REQUIRE(ipa::detail::placeholders_count<int, ipa::placeholders::detail::value_t, double,
+                   ipa::placeholders::detail::value_t> == 2);
+    STATIC_REQUIRE(ipa::detail::placeholders_count<ipa::placeholders::detail::value_t> == 1);
 }
 
 TEST_CASE("Is invocable")
