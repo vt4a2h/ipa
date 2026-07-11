@@ -215,3 +215,42 @@ TEST_CASE("Invoke with extra args (void) (constexpr)")
 
     STATIC_REQUIRE(valid);
 }
+
+TEST_CASE("Can modify in-place (don't do this! it's a value category test)")
+{
+    ipa::expected<int, std::string> e{.data = 42};
+
+    const auto modifyInPlace = [](int& v) -> ipa::expected<int, std::string>
+    {
+        ++v;
+        return {};
+    };
+
+    std::ignore = e.and_then(modifyInPlace);
+
+    constexpr int expectedResult = 43;
+
+    const int actualResult = e.value();
+
+    REQUIRE(expectedResult == actualResult);
+}
+
+TEST_CASE("Can modify in-place (don't do this! it's a value category test) (constexpr)")
+{
+    constexpr auto valid = []
+    {
+        ipa::expected<int, std::string> e{.data = 42};
+
+        const auto modifyInPlace = [](int& v) -> ipa::expected<int, std::string>
+        {
+            ++v;
+            return {};
+        };
+
+        std::ignore = e.and_then(modifyInPlace);
+
+        return e.value() == 43;
+    }();
+
+    STATIC_REQUIRE(valid);
+}

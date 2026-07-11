@@ -146,15 +146,17 @@ namespace ipa
             this Self&& self, F&& f,
             Args&&... args) noexcept(detail::is_nothrow_invocable_with_extra_args<F, T, Args...>)
         {
+            using FwdT = decltype(std::forward_like<Self>(std::declval<T>()));
+
             static_assert(!detail::single_arg_is_placeholder<Args...>,
                           "The trailing argument pack of a single argument must not contain a placeholder.");
             static_assert(detail::contains_zero_or_one_value_placeholders<Args...>,
                           "The trailing argument pack must contain zero or one value placeholder.");
-            static_assert(detail::is_invocable_with_extra_args<F, T, Args...>,
+            static_assert(detail::is_invocable_with_extra_args<F, FwdT, Args...>,
                           "The function must be invocable with a value type and all extra arguments. "
                           "Consider using placeholders::value if an argument of a value type shouldn't go first.");
 
-            using Ret = detail::invoke_result_t<F, T, Args...>;
+            using Ret = detail::invoke_result_t<F, FwdT, Args...>;
 
             static_assert(detail::is_expected<Ret>, "The function must return an expected");
             static_assert(detail::same_error_type<expected, Ret>,
