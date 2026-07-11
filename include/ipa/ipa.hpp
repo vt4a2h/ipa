@@ -107,6 +107,20 @@ namespace ipa
             return std::invoke(f, std::forward<T>(t), std::forward<Args>(args)...);
         }
 
+        template <class T, class Arg>
+        constexpr auto&& forward(T&& t, Arg&& arg) noexcept
+        {
+            // We can have only 0 or 1 placeholder
+            if constexpr (is_placeholder<Arg>)
+            {
+                return std::forward<T>(t);
+            }
+            else
+            {
+                return std::forward<Arg>(arg);
+            }
+        }
+
         template <class F, class T, class... Args>
             requires(contains_placeholder<Args...>)
         [[nodiscard]] constexpr auto invoke_with_extra_args(F&& f, T&& t,
@@ -114,19 +128,7 @@ namespace ipa
             is_nothrow_invocable_with_extra_args<F, T, Args...>
         )
         {
-            const auto forward = [&t]<class Arg>(Arg&& arg) noexcept -> auto&&
-            {
-                if constexpr (is_placeholder<Arg>)
-                {
-                    return std::forward<T>(t);
-                }
-                else
-                {
-                    return std::forward<Arg>(arg);
-                }
-            };
-
-            return std::invoke(f, forward(args)...);
+            return std::invoke(f, forward(std::forward<T>(t), std::forward<Args>(args))...);
         }
 
         template <class U1, class U2>
