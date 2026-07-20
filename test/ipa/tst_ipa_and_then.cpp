@@ -56,32 +56,32 @@ TEST_CASE("Forward args (Error)")
 
 TEST_CASE("Check placeholders count")
 {
-    STATIC_REQUIRE(ipa::detail::contains_zero_or_one_value_placeholders<int, double>);
-    STATIC_REQUIRE(ipa::detail::contains_zero_or_one_value_placeholders<int, double,
-                   ipa::placeholders::detail::value_t>);
-    STATIC_REQUIRE(ipa::detail::contains_zero_or_one_value_placeholders<
-        ipa::placeholders::detail::value_t>);
+    STATIC_REQUIRE(ipa::detail::contains_zero_or_one_unwrapped<int, double>);
+    STATIC_REQUIRE(ipa::detail::contains_zero_or_one_unwrapped<int, double,
+                   ipa::detail::unwrapped_t>);
+    STATIC_REQUIRE(ipa::detail::contains_zero_or_one_unwrapped<
+        ipa::detail::unwrapped_t>);
 
-    STATIC_REQUIRE_FALSE(ipa::detail::contains_zero_or_one_value_placeholders<int, double,
-                         ipa::placeholders::detail::value_t, ipa::placeholders::detail::value_t>);
+    STATIC_REQUIRE_FALSE(ipa::detail::contains_zero_or_one_unwrapped<int, double,
+                         ipa::detail::unwrapped_t, ipa::detail::unwrapped_t>);
 
-    STATIC_REQUIRE_FALSE(ipa::detail::contains_zero_or_one_value_placeholders<
-                         ipa::placeholders::detail::value_t, ipa::placeholders::detail::value_t>);
+    STATIC_REQUIRE_FALSE(ipa::detail::contains_zero_or_one_unwrapped<
+                         ipa::detail::unwrapped_t, ipa::detail::unwrapped_t>);
 }
 
 TEST_CASE("Check placeholders count (single arg pack")
 {
-    STATIC_REQUIRE(ipa::detail::single_arg_is_placeholder<ipa::placeholders::detail::value_t>);
-    STATIC_REQUIRE_FALSE(ipa::detail::single_arg_is_placeholder<int>);
+    STATIC_REQUIRE(ipa::detail::single_arg_is_unwrapped<ipa::detail::unwrapped_t>);
+    STATIC_REQUIRE_FALSE(ipa::detail::single_arg_is_unwrapped<int>);
 }
 
 TEST_CASE("Placeholders count")
 {
-    STATIC_REQUIRE(ipa::detail::placeholders_count<int, double> == 0);
-    STATIC_REQUIRE(ipa::detail::placeholders_count<int, double, ipa::placeholders::detail::value_t> == 1);
-    STATIC_REQUIRE(ipa::detail::placeholders_count<int, ipa::placeholders::detail::value_t, double,
-                   ipa::placeholders::detail::value_t> == 2);
-    STATIC_REQUIRE(ipa::detail::placeholders_count<ipa::placeholders::detail::value_t> == 1);
+    STATIC_REQUIRE(ipa::detail::unwrapped_count<int, double> == 0);
+    STATIC_REQUIRE(ipa::detail::unwrapped_count<int, double, ipa::detail::unwrapped_t> == 1);
+    STATIC_REQUIRE(ipa::detail::unwrapped_count<int, ipa::detail::unwrapped_t, double,
+                   ipa::detail::unwrapped_t> == 2);
+    STATIC_REQUIRE(ipa::detail::unwrapped_count<ipa::detail::unwrapped_t> == 1);
 }
 
 TEST_CASE("Is invocable")
@@ -90,20 +90,20 @@ TEST_CASE("Is invocable")
     STATIC_REQUIRE_FALSE(ipa::detail::is_invocable_with_extra_args<decltype(&strDblInt), int, int, int>);
 
     STATIC_REQUIRE(ipa::detail::is_invocable_with_extra_args<decltype(&strDblInt), double,
-                   std::string, ipa::placeholders::detail::value_t, int>);
+                   std::string, ipa::detail::unwrapped_t, int>);
     STATIC_REQUIRE(ipa::detail::is_invocable_with_extra_args<decltype(&strDblInt), std::string,
-                   ipa::placeholders::detail::value_t, double, int>);
+                   ipa::detail::unwrapped_t, double, int>);
     STATIC_REQUIRE(ipa::detail::is_invocable_with_extra_args<decltype(&strDblInt), int,
-                   std::string, double, ipa::placeholders::detail::value_t>);
+                   std::string, double, ipa::detail::unwrapped_t>);
     STATIC_REQUIRE_FALSE(ipa::detail::is_invocable_with_extra_args<decltype(&strDblInt), std::string,
-                         std::string, double, ipa::placeholders::detail::value_t>);
+                         std::string, double, ipa::detail::unwrapped_t>);
 }
 
 TEST_CASE("Invoke with extra args (double)")
 {
     ipa::expected<double, std::string> e{.data = 42.};
 
-    auto result = e.and_then(&strDblInt, std::string{"1"}, ipa::placeholders::value, 1);
+    auto result = e.and_then(&strDblInt, std::string{"1"}, ipa::unwrapped, 1);
 
     REQUIRE(result.has_value());
     REQUIRE(result.value() == 43);
@@ -115,7 +115,7 @@ TEST_CASE("Invoke with extra args (double) (constexpr)")
     {
         ipa::expected<double, std::string> e{.data = 42.};
 
-        auto result = e.and_then(&strDblInt, std::string{"1"}, ipa::placeholders::value, 1);
+        auto result = e.and_then(&strDblInt, std::string{"1"}, ipa::unwrapped, 1);
 
         return result.has_value() && result.value() == 43;
     }();
@@ -127,7 +127,7 @@ TEST_CASE("Invoke with extra args (int)")
 {
     ipa::expected<int, std::string> e{.data = 42};
 
-    auto result = e.and_then(&strDblInt, std::string{"1"}, 1., ipa::placeholders::value);
+    auto result = e.and_then(&strDblInt, std::string{"1"}, 1., ipa::unwrapped);
 
     REQUIRE(result.has_value());
     REQUIRE(result.value() == 43);
@@ -139,7 +139,7 @@ TEST_CASE("Invoke with extra args (int) (constexpr)")
     {
         ipa::expected<int, std::string> e{.data = 42};
 
-        auto result = e.and_then(&strDblInt, std::string{"1"}, 1., ipa::placeholders::value);
+        auto result = e.and_then(&strDblInt, std::string{"1"}, 1., ipa::unwrapped);
 
         return result.has_value() && result.value() == 43;
     }();
@@ -151,7 +151,7 @@ TEST_CASE("Invoke with extra args (str)")
 {
     ipa::expected<std::string, std::string> e{.data = "42"};
 
-    auto result = e.and_then(&strDblInt, ipa::placeholders::value, 1., 1);
+    auto result = e.and_then(&strDblInt, ipa::unwrapped, 1., 1);
 
     REQUIRE(result.has_value());
     REQUIRE(result.value() == 2);
@@ -163,7 +163,7 @@ TEST_CASE("Invoke with extra args (str) (constexpr)")
     {
         ipa::expected<std::string, std::string> e{.data = "42"};
 
-        auto result = e.and_then(&strDblInt, ipa::placeholders::value, 1., 1);
+        auto result = e.and_then(&strDblInt, ipa::unwrapped, 1., 1);
 
         return result.has_value() && result.value() == 2;
     }();
@@ -186,7 +186,7 @@ TEST_CASE("Invoke a class method (bind_front-like case)")
     ipa::expected<int, std::string> e{.data = 42};
 
     Adder adder;
-    auto result = e.and_then(&Adder::operator(), adder, ipa::placeholders::value, 1);
+    auto result = e.and_then(&Adder::operator(), adder, ipa::unwrapped, 1);
 
     REQUIRE(result.has_value());
     REQUIRE(result.value() == 43);

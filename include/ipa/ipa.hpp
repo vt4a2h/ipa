@@ -21,24 +21,21 @@ namespace ipa
     template <class T, class E>
     struct expected;
 
-    namespace placeholders
+    namespace detail
     {
-        namespace detail
+        struct unwrapped_t
         {
-            struct value_t
+            struct secret
             {
-                struct secret
-                {
-                };
-
-                constexpr value_t(secret, secret)
-                {
-                }
             };
-        }
 
-        inline constexpr detail::value_t value(detail::value_t::secret{}, detail::value_t::secret{});
+            constexpr unwrapped_t(secret, secret)
+            {
+            }
+        };
     }
+
+    inline constexpr detail::unwrapped_t unwrapped(detail::unwrapped_t::secret{}, detail::unwrapped_t::secret{});
 
     namespace detail
     {
@@ -49,36 +46,36 @@ namespace ipa
         inline constexpr bool is_expected<expected<T, E>> = true;
 
         template <class T>
-        inline constexpr bool is_placeholder = std::same_as<std::remove_cvref_t<T>, placeholders::detail::value_t>;
+        inline constexpr bool is_unwrapped = std::same_as<std::remove_cvref_t<T>, detail::unwrapped_t>;
 
         template <class... Args>
-        constexpr inline std::size_t placeholders_count =
-            (std::size_t{} + ... + static_cast<std::size_t>(is_placeholder<Args>));
+        constexpr inline std::size_t unwrapped_count =
+            (std::size_t{} + ... + static_cast<std::size_t>(is_unwrapped<Args>));
 
         template <class... Args>
-        constexpr inline bool single_arg_is_placeholder = sizeof...(Args) == 1 && placeholders_count<Args...> == 1;
+        constexpr inline bool single_arg_is_unwrapped = sizeof...(Args) == 1 && unwrapped_count<Args...> == 1;
 
         template <class... Args>
-        constexpr inline bool contains_zero_or_one_value_placeholders = placeholders_count<Args...> <= 1;
+        constexpr inline bool contains_zero_or_one_unwrapped = unwrapped_count<Args...> <= 1;
 
         template <class... Args>
-        inline constexpr bool contains_placeholder = (... || is_placeholder<Args>);
+        inline constexpr bool contains_unwrapped = (... || is_unwrapped<Args>);
 
         template <class F, class T, class... Args>
         constexpr inline bool is_invocable_with_extra_args = std::is_invocable_v<F, T, Args...>;
 
         template <class F, class T, class... Args>
-            requires(contains_placeholder<Args...>)
+            requires(contains_unwrapped<Args...>)
         constexpr inline bool is_invocable_with_extra_args<F, T, Args...> =
-            std::is_invocable_v<F, std::conditional_t<is_placeholder<Args>, T, Args>...>;
+            std::is_invocable_v<F, std::conditional_t<is_unwrapped<Args>, T, Args>...>;
 
         template <class F, class T, class... Args>
         constexpr inline bool is_nothrow_invocable_with_extra_args = std::is_nothrow_invocable_v<F, T, Args...>;
 
         template <class F, class T, class... Args>
-            requires(contains_placeholder<Args...>)
+            requires(contains_unwrapped<Args...>)
         constexpr inline bool is_nothrow_invocable_with_extra_args<F, T, Args...> =
-            std::is_nothrow_invocable_v<F, std::conditional_t<is_placeholder<Args>, T, Args>...>;
+            std::is_nothrow_invocable_v<F, std::conditional_t<is_unwrapped<Args>, T, Args>...>;
 
         template <class F, class T, class... Args>
         struct invoke_result
@@ -87,12 +84,12 @@ namespace ipa
         };
 
         template <class F, class T, class... Args>
-            requires(contains_placeholder<Args...>)
+            requires(contains_unwrapped<Args...>)
         struct invoke_result<F, T, Args...>
         {
             static_assert(is_invocable_with_extra_args<F, T, Args...>);
 
-            using type = std::invoke_result_t<F, std::conditional_t<is_placeholder<Args>, T, Args>...>;
+            using type = std::invoke_result_t<F, std::conditional_t<is_unwrapped<Args>, T, Args>...>;
         };
 
         template <class F, class T, class... Args>
@@ -110,8 +107,8 @@ namespace ipa
         template <class T, class Arg>
         constexpr auto&& forward(T&& t, Arg&& arg) noexcept
         {
-            // We can have only 0 or 1 placeholder
-            if constexpr (is_placeholder<Arg>)
+            // We can have only 0 or 1 unwrapped argument
+            if constexpr (is_unwrapped<Arg>)
             {
                 return std::forward<T>(t);
             }
@@ -122,7 +119,7 @@ namespace ipa
         }
 
         template <class F, class T, class... Args>
-            requires(contains_placeholder<Args...>)
+            requires(contains_unwrapped<Args...>)
         [[nodiscard]] constexpr auto invoke_with_extra_args(F&& f, T&& t,
                                                             Args&&... args) noexcept(
             is_nothrow_invocable_with_extra_args<F, T, Args...>
@@ -150,13 +147,14 @@ namespace ipa
         {
             using FwdT = decltype(std::forward_like<Self>(std::declval<T>()));
 
-            static_assert(!detail::single_arg_is_placeholder<Args...>,
-                          "The trailing argument pack of a single argument must not contain a placeholder.");
-            static_assert(detail::contains_zero_or_one_value_placeholders<Args...>,
-                          "The trailing argument pack must contain zero or one value placeholder.");
+            static_assert(!detail::single_arg_is_unwrapped<Args...>,
+                          "The trailing argument pack of a single argument must not contain the unwrapped placeholder.")
+                ;
+            static_assert(detail::contains_zero_or_one_unwrapped<Args...>,
+                          "The trailing argument pack must contain zero or one unwrapped placeholder.");
             static_assert(detail::is_invocable_with_extra_args<F, FwdT, Args...>,
                           "The function must be invocable with a value type and all extra arguments. "
-                          "Consider using placeholders::value if an argument of a value type shouldn't go first.");
+                          "Consider using unwrapped placeholder if an argument of a value type shouldn't go first.");
 
             using Ret = detail::invoke_result_t<F, FwdT, Args...>;
 
@@ -205,8 +203,9 @@ namespace ipa
             this Self&& self, F&& f,
             Args&&... args) noexcept(std::is_nothrow_invocable_v<F, Args...>)
         {
-            static_assert(!detail::contains_placeholder<Args...>,
-                          "The trailing argument pack must not contain any placeholders if value_type is void");
+            static_assert(!detail::contains_unwrapped<Args...>,
+                          "The trailing argument pack must not contain the unwrapped placeholder "
+                          "if value_type is void");
             static_assert(std::is_invocable_v<F, Args...>, "The function must be invocable with all extra arguments.");
 
             using Ret = std::invoke_result_t<F, Args...>;
