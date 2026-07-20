@@ -38,8 +38,8 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 auto componentResult = extractContext()
-    .and_then([&path, &metaData](Context context) {
-        return createComponent(context, path, metaData);
+    .and_then([&path, &metaData](Context &&context) {
+        return createComponent(std::move(context), path, metaData);
     });
 ```
 
@@ -59,33 +59,96 @@ auto componentResult = extractContext()
 </tbody>
 </table>
 
-The major use cases are:
+The code above is written to be as much equal as possible. This highlights another interesting aspect. In the left-hand side example, a user needs to remember about a value category to write efficient code. With the proposed changes, it comes automatically.
+
+Another important point is that the shortest and preferred style can contradict a project's code style and best practices. In an ideal scenario, lambda functions can be used as follows:
+
+```c++
+[&](Context &&ctx) { return createComponent(std::move(ctx), path, metaData); }
+```
+
+In the real code, it will not always work this way. For example, there might be requirements to capture everything explicitly by name (to be consistent with multithreaded callbacks), type names can be long, and one-line lambda functions may not be allowed. All this makes using lambda functions less attractive.
+
+### The major use cases
 
 1. Some functionality already exists as a free function with more than a single parameter and is used by other code.
 2. Some functionality is represented as a class method.
 3. Encourage using more properly named free functions with monadic operations.
 
-Discussion of the major implementation concerns:
+### The major concerns
 
 1. Why not just use a lambda function?
-    1. Can significantly reduce code readability because of the long captures.
-    2. Can have a long body.
-    3. Many named lambda functions can clutter a function and reduce readability as well.
-    4. A user has to write more (repeated) code.
-2. Why not use `bind_back`/`bind_front`?
+    1. "Ideal lambda" may conflict with the project code style.
+        1. Long captures.
+        2. Long type name.
+        3. Multi-line body. 
+    2. Many named lambda functions can clutter a function and reduce readability as well.
+    3. A user has to write more (repeated) code.
+    4. Requires keeping the value category in mind in some cases.
+2. How does it handle function overloading?
+    1. This paper doesn't propose any mechanisms. Ideally, don't have overloads. If you have to, use lambdas as usual.
+3. Why not use `bind_back`/`bind_front`?
     1. Looks more noisy.
     2. Can be non-zero cost: overhead[^1], restrictions[^2] on arguments, and create intermediate objects[^3].
-3. What to do about the position of a value contained inside `expected`/`optional` that is passed to a function?
+4. What to do about the position of a value contained inside `expected`/`optional` that is passed to a function?
     1. Pass as the first argument by default.
-    2. Use `placeholders::value` if a different position is desired.
-4. Any API/ABI breakage?
+    2. Use `std::unwrapped`[^4] (or a similar abstraction) if a different position is desired. See [Argument Placeholder](#argument-placeholder) for more details.
+5. Any API/ABI breakage?
     1. No API/ABI breakage.
     2. Full backward compatibility with the old code.
-5. Any overhead?
+6. Any overhead?
     1. Zero
     2. No intermediate objects, tuples, etc.
 
 The reference implementation for `expected::and_then` lives [here](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L144). The tests are [here](https://github.com/vt4a2h/ipa/blob/main/test/ipa/tst_ipa_and_then.cpp#L34). The code contains the implementation for `expected<T>` and `expected<void>`. All other monadic operations of `expected`/`optional` can be implemented the same manner.
+
+## Argument Placeholder
+
+This paper proposes to introduce an abstraction like `std::unwrapped` to use as a value placeholder for the forwarded argument as needed. While `std::unwrapped` serves the conceptual role of a positional placeholder, it is deliberately excluded from the `std::placeholders` namespace. That namespace is intrinsically coupled to `std::bind` and the `std::is_placeholder` trait. Including `std::unwrapped` there would either risk unintended interactions with legacy `std::bind` expressions or create a contradiction where an entity in `std::placeholders` is not recognized by `std::is_placeholder`. Therefore, `std::unwrapped` is proposed as a distinct, standalone utility.
+
+The usage of `std::unwrapped` is very restricted. It has a clear meaning and purpose: "it'll be replaced with a contained object while keeping the value category". See [Proposed changes](#proposed-changes) for more details.
+
+## Proposed changes
+
+### Introduce a new type
+Introduce a type `std::unwrapped` and an object for a forwarded value [placeholder](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L38). Comments and suggestions are welcome. The name may be different. We might want to use an existing abstraction or do it completely differently.
+
+```c++
+namespace detail
+{
+    struct unwrapped_t
+    {
+        // Implementation defined
+    
+        constexpr unwrapped_t(/* Implementation defined */)
+        {
+        }
+    };
+}
+
+inline constexpr detail::unwrapped_t unwrapped(/* Implementation defined */);
+```
+
+### Change signatures
+Change the signatures of monadic operations for `std::expected` and `std::optional`. Here is an example of `expected<T, E>::and_then`:
+
+```C++
+template<class F, class ...Args> 
+constexpr auto and_then(F&& f, Args&& ...args);
+```
+
+### Add new constraints (expected<T, E>::and_then)
+Let `T` be the type of the contained value. Let `P` be a type of the forwarded value placeholder. Let `F` be a type the function to invoke. Let `Args` be a type of the trailing argument pack.
+1. `!same_as<T, void>`:
+   1. If `sizeof(Args) == 1`, then the pack must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L150)).
+   2. If `sizeof(Args) > 1`, then the pack must contain zero or one `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L153)).
+   3. `F` must be invocable with `Args` where `P` is replaced by `T` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L155)).
+   4. The second constraint must be taken into account in all other related code. I.e., we always replace `P` with `T` whenever `P` is encountered ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L70)). The same for objects, not just for the types ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L111)).
+2. `same_as<T, void>`:
+   1. `Args` must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L206)).
+   2. `F` must be invocable with `Args` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L209)).
+
+All other constraints remain the same. But we should take 1.2 and 1.3 into account.
 
 ## Examples
 
@@ -130,8 +193,8 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 auto componentResult = extractContext()
-    .and_then([&path, &metaData](Context context) {
-        return createComponent(context, path, metaData);
+    .and_then([&path, &metaData](Context &&context) {
+        return createComponent(std::move(context), path, metaData);
     });
 ```
 
@@ -166,7 +229,7 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 auto componentResult = extractContext()
-    .and_then(&createComponent, path, metaData, std::placeholders::value);
+    .and_then(&createComponent, path, metaData, std::unwrapped);
 ```
 
 In this case, the value of `Context` will be passed to the function as the last argument.
@@ -193,8 +256,8 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 auto componentResult = extractContext()
-    .and_then([&path, &metaData](Context context) {
-        return createComponent(path, metaData, context);
+    .and_then([&path, &metaData](Context&& context) {
+        return createComponent(path, metaData, std::move(context));
     });
 ```
 
@@ -206,7 +269,7 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 auto componentResult = extractContext()
-    .and_then(&createComponent, path, metaData, std::placeholders::value);
+    .and_then(&createComponent, path, metaData, std::unwrapped);
 ```
 
 </td>
@@ -237,7 +300,7 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 const auto result = createComponent(ctx, path, metaData)
-    .and_then(&Database::store, db, std::placeholders::value);
+    .and_then(&Database::store, db, std::unwrapped);
 ```
 
 The code above will invoke `Database::store` as follows:
@@ -268,8 +331,8 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 const auto result = createComponent(ctx, path, metaData)
-    .and_then([&db](Component component) {
-        return db.store(component);
+    .and_then([&db](Component&& component) {
+        return db.store(std::move(component));
     });
 ```
 
@@ -283,7 +346,7 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 const auto result = createComponent(ctx, path, metaData)
-    .and_then(&Database::store, db, std::placeholders::value);
+    .and_then(&Database::store, db, std::unwrapped);
 ```
 
 </td>
@@ -324,7 +387,7 @@ Path path{/* ... */};
 MetaData metaData{/* ... */};
 
 const auto result = createComponent(ctx, path, metaData)
-    .and_then(&Database::store, db, std::placeholders::value);
+    .and_then(&Database::store, db, std::unwrapped);
 ```
 
 </td>
@@ -332,53 +395,10 @@ const auto result = createComponent(ctx, path, metaData)
 </tbody>
 </table>
 
-## Proposed changes
-
-### Introduce a new type
-Introduce a type and an object for a value [placeholder](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L40). Comments and suggestions are welcome. The name may be different. We might want to use an existing abstraction or do it completely differently.
-
-```c++
-namespace placeholders
-{
-    namespace detail
-    {
-        struct value_t
-        {
-            // Implementation defined
-          
-            constexpr value_t(/* Implementation defined */)
-            {
-            }
-        };
-    }
-
-    inline constexpr detail::value_t value(/* Implementation defined */);
-}
-```
-
-### Change signatures
-Change the signatures of monadic operations for `std::expected` and `std::optional`. Here is an example of `expected<T, E>::and_then`:
-
-```C++
-template<class F, class ...Args> 
-constexpr auto and_then(F&& f, Args&& ...args);
-```
-
-### Add new constraints
-Let `T` the type of the contained value. Let `P` be a type of the value placeholder. Let `F` be a type the function to invoke. Let `Args` be a type of the trailing argument pack.
-1. `!same_as<T, void>`:
-    1. If `sizeof(Args) == 1`, then the pack must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L149)).
-    2. If `sizeof(Args) > 1`, then the pack must contain zero or one `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L151)).
-    3. `F` must be invocable with `Args` where `P` is replaced by `T` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L153)).
-    4. The second constraint must be taken into account in all other related code. I.e., we always replace `P` with `T` whenever `P` is encountered ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L72)). The same for objects, not just for the types ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L116)).
-2. `same_as<T, void>`:
-    1. `Args` must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L204)).
-    2. `F` must be invocable with `Args` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L206)).
-
-All other constraints remain the same. But we should take 1.2 and 1.3 into account.
-
 [^1]: We are talking about a **potential** overhead here, for example, when passing large objects as arguments. A user can always use `std::ref` or similar, but it requires writing this code and being aware of it.
 
 [^2]: Both `f` and `args` must be `MoveConstructible`.
 
 [^3]: Also **potentially**. The code certainly returns another function object, but the influence should be negligible.
+
+[^4]: Doesn't exist yet. May or may not be introduced as part of this proposal.
