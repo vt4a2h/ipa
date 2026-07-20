@@ -172,7 +172,7 @@ auto componentResult = extractContext()
 Since `Context` is the first argument, we don't need to change its position. Hence, we can simply forward `path` and `metaData` to the function in the defined order. The code above will invoke `createComponent` as follows:
 
 ```c++
-std::invoke(&createComponent, ctx.value(), path, metaData);
+std::invoke(&createComponent, std::forward_like<Self>(data).value(), path, metaData);
 ```
 
 Compare the final solutions:
@@ -235,7 +235,7 @@ auto componentResult = extractContext()
 In this case, the value of `Context` will be passed to the function as the last argument.
 
 ```c++
-std::invoke(&createComponent, path, metaData, ctx.value());
+std::invoke(&createComponent, path, metaData, std::forward_like<Self>(data).value());
 ```
 
 Compare the final solutions:
@@ -306,7 +306,7 @@ const auto result = createComponent(ctx, path, metaData)
 The code above will invoke `Database::store` as follows:
 
 ```c++
-std::invoke(&Database::store, db, component.value());
+std::invoke(&Database::store, db, std::forward_like<Self>(data).value());
 ```
 
 Another good application of this case is to chain something inside a class method using other methods of this class. In this case, we use `this` as a second object.
