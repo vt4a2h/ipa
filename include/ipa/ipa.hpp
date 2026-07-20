@@ -107,7 +107,7 @@ namespace ipa
         template <class T, class Arg>
         constexpr auto&& forward(T&& t, Arg&& arg) noexcept
         {
-            // We can have only 0 or 1 unwrapped argument
+            // We can have only 0 or 1 unwrapped argument. Hence, t will be forwarded only once
             if constexpr (is_unwrapped<Arg>)
             {
                 return std::forward<T>(t);
