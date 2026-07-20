@@ -148,13 +148,13 @@ namespace ipa
             using FwdT = decltype(std::forward_like<Self>(std::declval<T>()));
 
             static_assert(!detail::single_arg_is_unwrapped<Args...>,
-                          "The trailing argument pack of a single argument must not contain the unwrapped placeholder.")
+                          "The trailing argument pack of a single argument must not contain std::unwrapped.")
                 ;
             static_assert(detail::contains_zero_or_one_unwrapped<Args...>,
-                          "The trailing argument pack must contain zero or one unwrapped placeholder.");
+                          "The trailing argument pack must contain zero or one std::unwrapped.");
             static_assert(detail::is_invocable_with_extra_args<F, FwdT, Args...>,
                           "The function must be invocable with a value type and all extra arguments. "
-                          "Consider using unwrapped placeholder if an argument of a value type shouldn't go first.");
+                          "Consider using std::unwrapped if an argument of a value type shouldn't go first.");
 
             using Ret = detail::invoke_result_t<F, FwdT, Args...>;
 
@@ -204,7 +204,7 @@ namespace ipa
             Args&&... args) noexcept(std::is_nothrow_invocable_v<F, Args...>)
         {
             static_assert(!detail::contains_unwrapped<Args...>,
-                          "The trailing argument pack must not contain the unwrapped placeholder "
+                          "The trailing argument pack must not contain the std::unwrapped "
                           "if value_type is void");
             static_assert(std::is_invocable_v<F, Args...>, "The function must be invocable with all extra arguments.");
 
