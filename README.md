@@ -144,7 +144,9 @@ Let `T` be the type of the contained value. Let `P` be a type of the forwarded v
 1. `!same_as<T, void>`:
    1. If `sizeof(Args) == 1`, then the pack must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L150)).
    2. If `sizeof(Args) > 1`, then the pack must contain zero or one `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L153)).
-   3. `F` must be invocable with `Args` where `P` is replaced by `T` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L155)).
+   3. `F` must be invocable with:
+      1. `Args` where `P` is replaced by `T` if `P` is present in `Args` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L155)).
+      2. `T` and `Args` in that order if `P` is not present in `Args`.
    4. The second constraint must be taken into account in all other related code. I.e., we always replace `P` with `T` whenever `P` is encountered ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L70)). The same for objects, not just for the types ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L111)).
 2. `same_as<T, void>`:
    1. `Args` must contain zero `P` ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L206)).
