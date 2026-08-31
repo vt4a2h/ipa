@@ -10,8 +10,6 @@
  */
 #pragma once
 
-#include <iostream>
-
 #include <expected>
 #include <functional>
 #include <utility>
@@ -40,10 +38,13 @@ namespace ipa
     namespace detail
     {
         template <class U>
-        inline constexpr bool is_expected = false;
+        inline constexpr bool is_expected_ = false;
 
         template <class T, class E>
-        inline constexpr bool is_expected<expected<T, E>> = true;
+        inline constexpr bool is_expected_<expected<T, E>> = true;
+
+        template <class T>
+        concept is_expected = is_expected_<std::remove_cvref_t<T>>;
 
         template <class T>
         inline constexpr bool is_unwrapped = std::same_as<std::remove_cvref_t<T>, detail::unwrapped_t>;
@@ -96,7 +97,7 @@ namespace ipa
         using invoke_result_t = invoke_result<F, T, Args...>::type;
 
         template <class F, class T, class... Args>
-        [[nodiscard]] constexpr auto invoke_with_extra_args(F&& f, T&& t,
+        [[nodiscard]] constexpr auto invoke_with_extra_args(F f, T&& t,
                                                             Args&&... args) noexcept(
             is_nothrow_invocable_with_extra_args<F, T, Args...>
         )
@@ -120,7 +121,7 @@ namespace ipa
 
         template <class F, class T, class... Args>
             requires(contains_unwrapped<Args...>)
-        [[nodiscard]] constexpr auto invoke_with_extra_args(F&& f, T&& t,
+        [[nodiscard]] constexpr auto invoke_with_extra_args(F f, T&& t,
                                                             Args&&... args) noexcept(
             is_nothrow_invocable_with_extra_args<F, T, Args...>
         )
@@ -128,7 +129,7 @@ namespace ipa
             return std::invoke(f, forward(std::forward<T>(t), std::forward<Args>(args))...);
         }
 
-        template <class U1, class U2>
+        template <is_expected U1, is_expected U2>
         constexpr inline bool same_error_type = std::same_as<
             typename std::remove_cvref_t<U1>::error_type, typename std::remove_cvref_t<U2>::error_type>;
     }
@@ -142,14 +143,14 @@ namespace ipa
 
         template <class Self, class F, class... Args>
         [[nodiscard]] constexpr auto and_then(
-            this Self&& self, F&& f,
-            Args&&... args) noexcept(detail::is_nothrow_invocable_with_extra_args<F, T, Args...>)
+            this Self&& self, F f,
+            Args&&... args) noexcept(detail::is_nothrow_invocable_with_extra_args<
+            F, decltype(std::forward_like<Self>(std::declval<T>())), Args...>)
         {
             using FwdT = decltype(std::forward_like<Self>(std::declval<T>()));
 
             static_assert(!detail::single_arg_is_unwrapped<Args...>,
-                          "The trailing argument pack of a single argument must not contain std::unwrapped.")
-                ;
+                          "The trailing argument pack of a single argument must not contain std::unwrapped.");
             static_assert(detail::contains_zero_or_one_unwrapped<Args...>,
                           "The trailing argument pack must contain zero or one std::unwrapped.");
             static_assert(detail::is_invocable_with_extra_args<F, FwdT, Args...>,
@@ -158,7 +159,7 @@ namespace ipa
 
             using Ret = detail::invoke_result_t<F, FwdT, Args...>;
 
-            static_assert(detail::is_expected<Ret>, "The function must return an expected");
+            static_assert(detail::is_expected_<Ret>, "The function must return an expected");
             static_assert(detail::same_error_type<expected, Ret>,
                           "The function must return an expected with the same error type");
 
@@ -177,13 +178,13 @@ namespace ipa
         [[nodiscard]] constexpr bool has_error() const noexcept { return !has_value(); }
 
         template <class Self>
-        [[nodiscard]] constexpr auto&& value(this Self&& self) noexcept
+        [[nodiscard]] constexpr auto&& value(this Self&& self)
         {
             return std::forward_like<Self>(self.data).value();
         }
 
         template <class Self>
-        [[nodiscard]] constexpr auto&& error(this Self&& self) noexcept
+        [[nodiscard]] constexpr auto&& error(this Self&& self)
         {
             return std::forward_like<Self>(self.data).error();
         }
@@ -200,7 +201,7 @@ namespace ipa
 
         template <class Self, class F, class... Args>
         [[nodiscard]] constexpr auto and_then(
-            this Self&& self, F&& f,
+            this Self&& self, F f,
             Args&&... args) noexcept(std::is_nothrow_invocable_v<F, Args...>)
         {
             static_assert(!detail::contains_unwrapped<Args...>,
@@ -210,7 +211,7 @@ namespace ipa
 
             using Ret = std::invoke_result_t<F, Args...>;
 
-            static_assert(detail::is_expected<Ret>, "The function must return an expected");
+            static_assert(detail::is_expected_<Ret>, "The function must return an expected");
             static_assert(detail::same_error_type<expected, Ret>,
                           "The function must return an expected with the same error type");
 
@@ -228,7 +229,7 @@ namespace ipa
         [[nodiscard]] constexpr bool has_error() const noexcept { return !has_value(); }
 
         template <class Self>
-        [[nodiscard]] constexpr auto&& error(this Self&& self) noexcept
+        [[nodiscard]] constexpr auto&& error(this Self&& self)
         {
             return std::forward_like<Self>(self.data).error();
         }
