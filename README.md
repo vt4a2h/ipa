@@ -106,6 +106,8 @@ The reference implementation for `expected::and_then` lives [here](https://githu
 
 This paper proposes to introduce an abstraction like `std::unwrapped` to use as a value placeholder for the forwarded argument as needed. While `std::unwrapped` serves the conceptual role of a positional placeholder, it is deliberately excluded from the `std::placeholders` namespace. That namespace is intrinsically coupled to `std::bind` and the `std::is_placeholder` trait. Including `std::unwrapped` there would either risk unintended interactions with legacy `std::bind` expressions or create a contradiction where an entity in `std::placeholders` is not recognized by `std::is_placeholder`. Therefore, `std::unwrapped` is proposed as a distinct, standalone utility.
 
+From a type-theory perspective, `std::expected<T, E>` is a sum type. In that model, _unwrapping_ uniformly means "extracting the active payload of the tagged union". In light of this, a single universal placeholder like `std::unwrapped` is conceptually sufficient, and having a separate `std::unwrapped_error` would introduce unnecessary complexity and redundancy.
+
 The usage of `std::unwrapped` is very restricted. It has a clear meaning and purpose: "it'll be replaced with a contained object while keeping the value category". See [Proposed changes](#proposed-changes) for more details.
 
 ## Proposed changes
