@@ -6,7 +6,7 @@ audience:
   - Library Evolution Working Group
 author:
   - name: Vitaly Fanaskov
-    email: <vt4a2h@gmail.com>
+    email: <vt4a2h@protonmail.com>
   - name: Alexsandro Thomas
     email: <thomas@alexsand.ro>
 toc: true
