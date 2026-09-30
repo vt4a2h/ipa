@@ -215,6 +215,7 @@ constexpr auto or_else(this Self&& self, F&& f, Args&& ...args);
 ## Add new constraints
 
 Let:
+
 - `T` be the type of the contained value.
 - `E` be the type of the contained error.
 - `P` be the type of the forwarded value placeholder.
