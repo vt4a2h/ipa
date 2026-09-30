@@ -183,19 +183,45 @@ inline constexpr detail::unwrapped_t unwrapped(/* Implementation defined */);
 
 ## Change signatures
 
-Change the signatures of monadic operations for `std::expected` and
-`std::optional`. Here is an example of `expected<T, E>::and_then`:
+Change the signatures of monadic operations for `std::expected`:
 
 ```cpp
-template<class F, class ...Args>
-constexpr auto and_then(F&& f, Args&& ...args);
+template<class Self, class F, class ...Args>
+constexpr auto and_then(this Self&& self, F&& f, Args&& ...args);
+
+template<class Self, class F, class ...Args>
+constexpr auto transform(this Self&& self, F&& f, Args&& ...args);
+
+template<class Self, class F, class ...Args>
+constexpr auto or_else(this Self&& self, F&& f, Args&& ...args);
+
+template<class Self, class F, class ...Args>
+constexpr auto transform_error(this Self&& self, F&& f, Args&& ...args);
 ```
 
-## Add new constraints (`expected<T, E>::and_then`)
+Change the signatures of monadic operations for `std::optional`:
 
-Let `T` be the type of the contained value. Let `P` be the type of the
-forwarded value placeholder. Let `F` be the type of the function to invoke.
-Let `Args` be the types of the trailing argument pack.
+```cpp
+template<class Self, class F, class ...Args>
+constexpr auto and_then(this Self&& self, F&& f, Args&& ...args);
+
+template<class Self, class F, class ...Args>
+constexpr auto transform(this Self&& self, F&& f, Args&& ...args);
+
+template<class Self, class F, class ...Args>
+constexpr auto or_else(this Self&& self, F&& f, Args&& ...args);
+```
+
+## Add new constraints
+
+Let:
+- `T` be the type of the contained value.
+- `E` be the type of the contained error.
+- `P` be the type of the forwarded value placeholder.
+- `F` be the type of the function to invoke.
+- `Args` be the types of the trailing argument pack.
+
+### For `expected<T, E>::and_then` and `expected<T, E>::transform`
 
 1. `!same_as<T, void>`:
     1. If `sizeof...(Args) == 1`, then the pack must contain zero `P`
@@ -217,8 +243,32 @@ Let `Args` be the types of the trailing argument pack.
     2. `F` must be invocable with `Args`
        ([ref](https://github.com/vt4a2h/ipa/blob/main/include/ipa/ipa.hpp#L209)).
 
-All other constraints remain the same, but 1.2 and 1.3 must be taken into
-account.
+### For `expected<T, E>::or_else` and `expected<T, E>::transform_error`
+
+1. If `sizeof...(Args) == 1`, then the pack must contain zero `P`.
+2. If `sizeof...(Args) > 1`, then the pack must contain zero or one `P`.
+3. `F` must be invocable with:
+    1. `Args` where `P` is replaced by `E`, if `P` is present in `Args`.
+    2. `E` and `Args` in that order, if `P` is not present in `Args`.
+4. The second constraint must be taken into account in all other related
+   code, i.e., `P` is always replaced with `E` wherever `P` is encountered.
+   The same applies to objects, not just types.
+
+### For `optional<T>::and_then` and `optional<T>::transform`
+
+1. `Args` must contain zero `P`.
+2. `F` must be invocable with `Args`.
+
+### For `optional<T>::or_else`
+
+1. If `sizeof...(Args) == 1`, then the pack must contain zero `P`.
+2. If `sizeof...(Args) > 1`, then the pack must contain zero or one `P`.
+3. `F` must be invocable with:
+    1. `Args` where `P` is replaced by `E`, if `P` is present in `Args`.
+    2. `E` and `Args` in that order, if `P` is not present in `Args`.
+4. The second constraint must be taken into account in all other related
+   code, i.e., `P` is always replaced with `E` wherever `P` is encountered.
+   The same applies to objects, not just types.
 
 # Examples
 
