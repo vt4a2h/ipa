@@ -1,5 +1,5 @@
 ---
-title: "Inline Partial Application for monadic operations"
+title: "Inline Partial Application for Monadic Operations"
 document: DXXXXR0
 date: today
 audience:
