@@ -119,8 +119,8 @@ attractive.
     2. Use `std::unwrapped`[^4] (or a similar abstraction) if a different
        position is desired. See [Argument placeholder](#argument-placeholder)
        for more details.
-5. Any API/ABI breakage?
-    1. No API/ABI breakage.
+5. Any API breakage?
+    1. No API breakage.
     2. Full backward compatibility with existing code.
 6. Any overhead?
     1. Zero.
