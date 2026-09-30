@@ -257,19 +257,19 @@ Let:
 
 ### For `optional<T>::and_then` and `optional<T>::transform`
 
-1. `Args` must contain zero `P`.
-2. `F` must be invocable with `Args`.
-
-### For `optional<T>::or_else`
-
 1. If `sizeof...(Args) == 1`, then the pack must contain zero `P`.
 2. If `sizeof...(Args) > 1`, then the pack must contain zero or one `P`.
 3. `F` must be invocable with:
-    1. `Args` where `P` is replaced by `E`, if `P` is present in `Args`.
-    2. `E` and `Args` in that order, if `P` is not present in `Args`.
+    1. `Args` where `P` is replaced by `T`, if `P` is present in `Args`.
+    2. `T` and `Args` in that order, if `P` is not present in `Args`.
 4. The second constraint must be taken into account in all other related
-   code, i.e., `P` is always replaced with `E` wherever `P` is encountered.
+   code, i.e., `P` is always replaced with `T` wherever `P` is encountered.
    The same applies to objects, not just types.
+
+### For `optional<T>::or_else`
+
+1. `Args` must contain zero `P`.
+2. `F` must be invocable with `Args`.
 
 # Examples
 
